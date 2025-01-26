@@ -33,15 +33,15 @@ func TestNewDependencyState(t *testing.T) {
 
 	topic.Publish(testDepOne, testDepTwo)
 	s := <-depChan
-	if s != DependenciesUnmet {
-		t.Errorf("Expected state to be %v, got %v", DependenciesUnmet, ds.CurrentState())
+	if s != DependenciesNotMet {
+		t.Errorf("Expected state to be %v, got %v", DependenciesNotMet, ds.CurrentState())
 	}
 
 	testDepOne.state = "Happy"
 	topic.Publish(testDepOne)
 	// No state change should be published
-	if ds.CurrentState() != DependenciesUnmet {
-		t.Errorf("Expected state to be %v, got %v", DependenciesUnmet, ds.CurrentState())
+	if ds.CurrentState() != DependenciesNotMet {
+		t.Errorf("Expected state to be %v, got %v", DependenciesNotMet, ds.CurrentState())
 	}
 
 	testDepTwo.state = "Happy"
@@ -54,8 +54,8 @@ func TestNewDependencyState(t *testing.T) {
 	testDepTwo.state = "Sad"
 	topic.Publish(testDepTwo)
 	s = <-depChan
-	if s != DependenciesUnmet {
-		t.Errorf("Expected state to be %v, got %v", DependenciesUnmet, ds.CurrentState())
+	if s != DependenciesNotMet {
+		t.Errorf("Expected state to be %v, got %v", DependenciesNotMet, ds.CurrentState())
 	}
 
 	testDepTwo.state = "Happy"

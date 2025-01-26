@@ -11,7 +11,7 @@ type State string
 
 const (
 	DependenciesMet     State = "dependencies_met"
-	DependenciesUnmet   State = "dependencies_unmet"
+	DependenciesNotMet  State = "dependencies_notmet"
 	DependenciesUnknown State = "dependencies_unknown"
 )
 
@@ -45,7 +45,6 @@ type dependencyState[T any] struct {
 // NewDependencyState creates a new DependencyState with the given dependencies and desired state.
 func newDependencyState[T any](idStateFunc IDStateFunc[T], desiredState State) *dependencyState[T] {
 	s := &dependencyState[T]{
-		// dependencies: make(map[string]State),
 		transitions:  pubsub.NewTopic(),
 		currentState: DependenciesUnknown,
 		desiredState: desiredState,
@@ -91,10 +90,6 @@ func (d *dependencyState[T]) Remove(t ...T) {
 // state when the dependencies are met, and the second channel will receive the state when the
 // dependencies are unmet.
 func (d *dependencyState[T]) SubscribeTo(ctx context.Context, events <-chan any) <-chan State {
-
-	// unmetChan := pubsub.SubscribeWithFilter(d.transitions, func(s State) bool { return s == DependenciesUnmet })
-	// metChan := pubsub.SubscribeWithFilter(d.transitions, func(s State) bool { return s == DependenciesMet })
-
 	go func() {
 		c := pubsub.CastChan[T](events)
 
@@ -108,9 +103,12 @@ func (d *dependencyState[T]) SubscribeTo(ctx context.Context, events <-chan any)
 				}
 
 				id, state := d.idStateFunc(t)
-				d.dependencies.Store(id, state)
+				_, exists := d.dependencies.Load(id)
+				if exists {
+					d.dependencies.Store(id, state)
 
-				d.assessState()
+					d.assessState()
+				}
 			}
 		}
 	}()
@@ -125,7 +123,7 @@ func (d *dependencyState[T]) assessState() {
 	newState := DependenciesMet
 	d.dependencies.Range(func(_, value interface{}) bool {
 		if value.(State) != d.desiredState {
-			newState = DependenciesUnmet
+			newState = DependenciesNotMet
 			return false
 		}
 		return true
