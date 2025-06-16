@@ -137,7 +137,7 @@ func TestNewDependencyStateWithTopic(t *testing.T) {
 
 	// Assert: The dependency state should be created successfully
 	if ds == nil {
-		t.Errorf("Expected NewDependencyStateWithTopic to return a non-nil DependencyState")
+		t.Fatalf("Expected NewDependencyStateWithTopic to return a non-nil DependencyState")
 	}
 	if depChan == nil {
 		t.Errorf("Expected NewDependencyStateWithTopic to return a non-nil channel")

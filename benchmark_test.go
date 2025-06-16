@@ -21,6 +21,7 @@ func benchIDStateFunc(d benchDep) (string, State) {
 
 // setupBenchmark creates a common benchmark setup
 func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pubsub.Topic, DependencyState[benchDep]) {
+	b.Helper()
 	// Create dependencies
 	deps := make([]benchDep, numDeps)
 	for i := 0; i < numDeps; i++ {
