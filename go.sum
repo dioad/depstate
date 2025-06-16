@@ -1,2 +1,4 @@
 github.com/dioad/pubsub v0.0.4 h1:9GOXsABmIDMlOLp6JzaNvmV+6uR1s7DAjOxnVs5wrnI=
 github.com/dioad/pubsub v0.0.4/go.mod h1:1xqSVPtOAdPDZVpxueYieLc18uWsezKRhgifkXYkSDI=
+github.com/dioad/pubsub v0.0.5 h1:wnLvtl+w/zUHPxqV5/xpWwMpRlTkl0qYl5To1hkEc5A=
+github.com/dioad/pubsub v0.0.5/go.mod h1:1xqSVPtOAdPDZVpxueYieLc18uWsezKRhgifkXYkSDI=
