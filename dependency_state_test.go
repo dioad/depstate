@@ -5,54 +5,6 @@ import (
 	"time"
 )
 
-// // testDep represents a test dependency with an ID and state
-// type testDep struct {
-// 	id    string
-// 	state string
-// }
-//
-// // testIDStateFunc extracts the ID and state from a testDep
-// func testIDStateFunc(t testDep) (string, State) {
-// 	return t.id, State(t.state)
-// }
-//
-// // setupTest creates a common test setup with two dependencies
-// // Returns the dependencies, topic, dependency state tracker, and context
-// func setupTest() (context.Context, testDep, testDep, pubsub.Topic, DependencyState[testDep]) {
-// 	// Arrange: Create test dependencies
-// 	dep1 := testDep{id: "1", state: "Sad"}
-// 	dep2 := testDep{id: "2", state: "Sad"}
-//
-// 	// Create a topic with buffered channel to avoid missing messages
-// 	topic := pubsub.NewTopic()
-// 	topicChan := topic.SubscribeWithBuffer(10)
-//
-// 	// Create context for the test
-// 	ctx := context.Background()
-//
-// 	// Create the dependency state tracker with "Happy" as the desired state
-// 	ds, _ := NewDependencyState(ctx, testIDStateFunc, State("Happy"), topicChan)
-//
-// 	return ctx, dep1, dep2, topic, ds
-// }
-//
-// // assertStateEquals asserts that the current state equals the expected state
-// // Waits for the state to change if necessary
-// func assertStateEquals(t *testing.T, ds DependencyState[testDep], expectedState State, timeout time.Duration) {
-// 	t.Helper()
-//
-// 	// Wait for the state to change to the expected state
-// 	err := ds.WaitUntilState(context.Background(), expectedState, timeout)
-// 	if err != nil {
-// 		t.Fatalf("Failed to reach state %v: %v", expectedState, err)
-// 	}
-//
-// 	// Verify the current state directly
-// 	if ds.CurrentState() != expectedState {
-// 		t.Errorf("Expected state to be %v, got %v", expectedState, ds.CurrentState())
-// 	}
-// }
-
 // TestInitialDependencyState tests that the initial state is correct after adding dependencies
 func TestInitialDependencyState(t *testing.T) {
 	// Arrange: Set up the test
@@ -99,6 +51,62 @@ func TestAllDependenciesMet(t *testing.T) {
 
 	// Assert: Verify the state changes to DependenciesMet
 	assertStateEquals(t, ds, DependenciesMet, 500*time.Millisecond)
+}
+
+func TestRemove(t *testing.T) {
+	_, dep1, dep2, topic, ds := setupTest()
+	ds.Add(dep1, dep2)
+	topic.Publish(dep1, dep2)
+
+	assertStateEquals(t, ds, DependenciesNotMet, 500*time.Millisecond)
+
+	// Update dep1 to Happy
+	dep1.state = "Happy"
+	topic.Publish(dep1)
+	assertStateEquals(t, ds, DependenciesNotMet, 500*time.Millisecond)
+
+	// Remove dep2, overall state should become Happy
+	ds.Remove(dep2)
+	assertStateEquals(t, ds, DependenciesMet, 500*time.Millisecond)
+}
+
+func TestSet(t *testing.T) {
+	_, dep1, dep2, _, ds := setupTest()
+	ds.Add(dep1, dep2)
+
+	// Manually set state for dep1
+	ds.Set("1", "Happy")
+	if !ds.IsDependencyMet("1") {
+		t.Errorf("Expected dep1 to be met")
+	}
+	assertStateEquals(t, ds, DependenciesNotMet, 500*time.Millisecond)
+
+	// Manually set state for dep2
+	ds.Set("2", "Happy")
+	if !ds.IsDependencyMet("2") {
+		t.Errorf("Expected dep2 to be met")
+	}
+	assertStateEquals(t, ds, DependenciesMet, 500*time.Millisecond)
+}
+
+func TestChan(t *testing.T) {
+	_, dep1, _, topic, ds := setupTest()
+	ds.Add(dep1)
+
+	stateChan := ds.Chan()
+
+	// Update dep1 to Happy
+	dep1.state = "Happy"
+	topic.Publish(dep1)
+
+	select {
+	case state := <-stateChan:
+		if state != DependenciesMet {
+			t.Errorf("Expected state DependenciesMet from Chan, got %v", state)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Timed out waiting for state change from Chan")
+	}
 }
 
 // TestDependencyStateTransitions tests state transitions when dependencies change

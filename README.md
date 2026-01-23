@@ -28,339 +28,48 @@ go get github.com/dioad/depstate
 
 ### Basic Usage
 
+See [examples/basic/main.go](examples/basic/main.go) for a complete example.
+
 ```go
-package main
+// Create a topic to publish service events
+topic := pubsub.NewTopic()
 
-import (
-	"context"
-	"fmt"
-	"time"
+// Create a dependency state tracker
+ctx := context.Background()
+ds, depChan := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
 
-	"github.com/dioad/depstate"
-	"github.com/dioad/pubsub"
-)
+// Add services to track
+service1 := Service{ID: "service1", Ready: false}
+service2 := Service{ID: "service2", Ready: false}
+ds.Add(service1, service2)
 
-// Define a dependency type
-type Service struct {
-	ID    string
-	Ready bool
-}
+// Start a goroutine to wait for all services to be ready
+go func() {
+    for state := range depChan {
+        if state == depstate.DependenciesMet {
+            fmt.Println("All services are ready!")
+        } else {
+            fmt.Println("Not all services are ready yet.")
+        }
+    }
+}()
 
-// Define a function to extract ID and state from a dependency
-func serviceIDStateFunc(s Service) (string, depstate.State) {
-	state := depstate.DependenciesNotMet
-	if s.Ready {
-		state = depstate.DependenciesMet
-	}
-	return s.ID, state
-}
-
-func main() {
-	// Create a topic to publish service events
-	topic := pubsub.NewTopic()
-
-	// Create a dependency state tracker
-	ctx := context.Background()
-	ds, depChan := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
-
-	// Add services to track
-	service1 := Service{ID: "service1", Ready: false}
-	service2 := Service{ID: "service2", Ready: false}
-	ds.Add(service1, service2)
-
-	// Start a goroutine to wait for all services to be ready
-	go func() {
-		for state := range depChan {
-			if state == depstate.DependenciesMet {
-				fmt.Println("All services are ready!")
-			} else {
-				fmt.Println("Not all services are ready yet.")
-			}
-		}
-	}()
-
-	// Simulate services becoming ready
-	time.Sleep(1 * time.Second)
-	service1.Ready = true
-	topic.Publish(service1)
-
-	time.Sleep(1 * time.Second)
-	service2.Ready = true
-	topic.Publish(service2)
-
-	// Wait for a bit to see the output
-	time.Sleep(1 * time.Second)
-}
+// Simulate services becoming ready
+service1.Ready = true
+topic.Publish(service1)
 ```
 
 ### Advanced Usage
 
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/dioad/depstate"
-	"github.com/dioad/pubsub"
-)
-
-// Define a dependency type
-type Service struct {
-	ID     string
-	Status string
-}
-
-// Define a function to extract ID and state from a dependency
-func serviceIDStateFunc(s Service) (string, depstate.State) {
-	state := depstate.DependenciesNotMet
-	if s.Status == "Running" {
-		state = depstate.DependenciesMet
-	}
-	return s.ID, state
-}
-
-func main() {
-	// Create a topic to publish service events
-	topic := pubsub.NewTopic()
-
-	// Create a context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Create a dependency state tracker
-	ds, depChan := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
-
-	// Add services to track
-	service1 := Service{ID: "service1", Status: "Stopped"}
-	service2 := Service{ID: "service2", Status: "Stopped"}
-	service3 := Service{ID: "service3", Status: "Stopped"}
-	ds.Add(service1, service2, service3)
-
-	// Start a goroutine to wait for all services to be ready
-	go func() {
-		for state := range depChan {
-			if state == depstate.DependenciesMet {
-				fmt.Println("All services are running!")
-			} else {
-				fmt.Println("Not all services are running yet.")
-			}
-		}
-	}()
-
-	// Simulate services changing state
-	go func() {
-		time.Sleep(1 * time.Second)
-		service1.Status = "Running"
-		topic.Publish(service1)
-
-		time.Sleep(1 * time.Second)
-		service2.Status = "Running"
-		topic.Publish(service2)
-
-		time.Sleep(1 * time.Second)
-		service3.Status = "Running"
-		topic.Publish(service3)
-
-		time.Sleep(1 * time.Second)
-		service2.Status = "Stopped"
-		topic.Publish(service2)
-
-		time.Sleep(1 * time.Second)
-		service2.Status = "Running"
-		topic.Publish(service2)
-	}()
-
-	// Wait for a bit to see the output
-	time.Sleep(6 * time.Second)
-}
-```
+See [examples/advanced/main.go](examples/advanced/main.go) for a complete example.
 
 ### Using WaitForDependencies and GetDependencyStates
 
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/dioad/depstate"
-	"github.com/dioad/pubsub"
-)
-
-// Define a dependency type
-type Service struct {
-	ID     string
-	Status string
-}
-
-// Define a function to extract ID and state from a dependency
-func serviceIDStateFunc(s Service) (string, depstate.State) {
-	state := depstate.DependenciesNotMet
-	if s.Status == "Running" {
-		state = depstate.DependenciesMet
-	}
-	return s.ID, state
-}
-
-func main() {
-	// Create a topic to publish service events
-	topic := pubsub.NewTopic()
-
-	// Create a context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Create a dependency state tracker
-	ds, _ := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
-
-	// Add services to track
-	service1 := Service{ID: "service1", Status: "Stopped"}
-	service2 := Service{ID: "service2", Status: "Stopped"}
-	service3 := Service{ID: "service3", Status: "Stopped"}
-	ds.Add(service1, service2, service3)
-
-	// Get the current state of all dependencies
-	states := ds.GetDependencyStates()
-	fmt.Println("Initial dependency states:")
-	for id, state := range states {
-		fmt.Printf("  %s: %s\n", id, state)
-	}
-
-	// Start a goroutine to update service states
-	go func() {
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service1...")
-		service1.Status = "Running"
-		topic.Publish(service1)
-
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service2...")
-		service2.Status = "Running"
-		topic.Publish(service2)
-
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service3...")
-		service3.Status = "Running"
-		topic.Publish(service3)
-	}()
-
-	// Wait for all services to be running with a timeout
-	fmt.Println("Waiting for all services to be running...")
-	if ds.WaitForDependencies(ctx, 5*time.Second) {
-		fmt.Println("All services are running!")
-	} else {
-		fmt.Println("Timed out waiting for services to be running.")
-	}
-
-	// Get the current state of all dependencies again
-	states = ds.GetDependencyStates()
-	fmt.Println("Final dependency states:")
-	for id, state := range states {
-		fmt.Printf("  %s: %s\n", id, state)
-	}
-}
-```
+See [examples/wait-for/main.go](examples/wait-for/main.go) for a complete example.
 
 ### Using IsDependencyMet and WaitForAny
 
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/dioad/depstate"
-	"github.com/dioad/pubsub"
-)
-
-// Define a dependency type
-type Service struct {
-	ID     string
-	Status string
-}
-
-// Define a function to extract ID and state from a dependency
-func serviceIDStateFunc(s Service) (string, depstate.State) {
-	state := depstate.DependenciesNotMet
-	if s.Status == "Running" {
-		state = depstate.DependenciesMet
-	}
-	return s.ID, state
-}
-
-func main() {
-	// Create a topic to publish service events
-	topic := pubsub.NewTopic()
-
-	// Create a context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Create a dependency state tracker using the convenience function
-	ds, _ := depstate.NewDependencyStateWithTopic(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic)
-
-	// Add services to track
-	service1 := Service{ID: "service1", Status: "Stopped"}
-	service2 := Service{ID: "service2", Status: "Stopped"}
-	service3 := Service{ID: "service3", Status: "Stopped"}
-	ds.Add(service1, service2, service3)
-
-	// Check if any service is running
-	fmt.Println("Checking if any service is running:")
-	fmt.Printf("  service1: %v\n", ds.IsDependencyMet("service1"))
-	fmt.Printf("  service2: %v\n", ds.IsDependencyMet("service2"))
-	fmt.Printf("  service3: %v\n", ds.IsDependencyMet("service3"))
-
-	// Start a goroutine to update service states
-	go func() {
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service2...")
-		service2.Status = "Running"
-		topic.Publish(service2)
-
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service1...")
-		service1.Status = "Running"
-		topic.Publish(service1)
-
-		time.Sleep(1 * time.Second)
-		fmt.Println("Starting service3...")
-		service3.Status = "Running"
-		topic.Publish(service3)
-	}()
-
-	// Wait for any service to be running
-	fmt.Println("Waiting for any service to be running...")
-	id, err := ds.WaitForAny(ctx, []string{"service1", "service2", "service3"}, 5*time.Second)
-	if err == nil {
-		fmt.Printf("Service %s is running!\n", id)
-	} else {
-		fmt.Println("Timed out waiting for any service to be running.")
-	}
-
-	// Check if any service is running again
-	fmt.Println("Checking if any service is running:")
-	fmt.Printf("  service1: %v\n", ds.IsDependencyMet("service1"))
-	fmt.Printf("  service2: %v\n", ds.IsDependencyMet("service2"))
-	fmt.Printf("  service3: %v\n", ds.IsDependencyMet("service3"))
-
-	// Wait for a specific service to be running
-	fmt.Println("Waiting for service1 to be running...")
-	id, err = ds.WaitForAny(ctx, []string{"service1"}, 5*time.Second)
-	if err == nil {
-		fmt.Printf("Service %s is running!\n", id)
-	} else {
-		fmt.Println("Timed out waiting for service1 to be running.")
-	}
-}
-```
+See [examples/any-met/main.go](examples/any-met/main.go) for a complete example.
 
 ## API Reference
 
@@ -404,14 +113,14 @@ An interface for managing dependency states:
 - `Remove`: Removes dependencies from being tracked.
 - `CurrentState`: Returns the current state of all dependencies.
 - `Chan`: Returns a channel that will receive state changes.
-- `WaitForDependencies`: Waits for dependencies to be met with a timeout. Returns true if dependencies are met, false if
-  the timeout is reached.
-- `WaitUntilState`: Waits until the dependencies reach the expected state or timeout. Returns an error if the timeout is
-  reached.
+- `WaitForDependencies`: Waits for the overall state to become DependenciesMet with a timeout. It returns true if the
+  dependencies are met within the timeout, false otherwise.
+- `WaitUntilState`: Waits until the dependencies reach the expected state or timeout.
 - `GetDependencyStates`: Returns a snapshot of all dependencies and their states.
 - `IsDependencyMet`: Returns true if the dependency with the given ID is in the desired state.
-- `WaitForAny`: Waits for any of the specified dependencies to be in the desired state. Returns the ID of the first
-  dependency that is in the desired state, or an empty string if the timeout is reached.
+- `WaitForAny`: Waits for any of the specified dependencies to reach the desired state. It returns the ID of the first
+  dependency that reaches the desired state, or an empty string and an error if the timeout is reached or context is
+  cancelled.
 
 #### `IDStateFunc[T any]`
 
@@ -452,4 +161,4 @@ subscription for event subscription. This is useful when you want to avoid missi
 
 ## License
 
-MIT
+Apache License 2.0

@@ -10,18 +10,6 @@ import (
 	"github.com/dioad/pubsub"
 )
 
-// State represents the state of dependencies.
-// type State string
-//
-// const (
-// 	// DependenciesMet indicates that all dependencies are in the desired state.
-// 	DependenciesMet State = "dependencies_met"
-// 	// DependenciesNotMet indicates that at least one dependency is not in the desired state.
-// 	DependenciesNotMet State = "dependencies_notmet"
-// 	// DependenciesUnknown indicates that the state of dependencies is unknown.
-// 	DependenciesUnknown State = "dependencies_unknown"
-// )
-
 // DependencyState is an interface for managing dependency states.
 type DependencyState[T any] interface {
 	// Set sets the state of a dependency with the given ID.
@@ -33,9 +21,10 @@ type DependencyState[T any] interface {
 	// CurrentState returns the current state of all dependencies.
 	CurrentState() State
 	// Chan returns a channel that will receive state changes.
+	// The returned channel will receive the current state of the dependencies whenever it changes.
 	Chan() <-chan State
-	// WaitForDependencies waits for dependencies to be met with a timeout.
-	// Returns true if dependencies are met, false if the timeout is reached.
+	// WaitForDependencies waits for the overall state to become DependenciesMet with a timeout.
+	// It returns true if the dependencies are met within the timeout, false otherwise.
 	WaitForDependencies(ctx context.Context, timeout time.Duration) bool
 	// WaitUntilState waits until the dependencies reach the expected state or timeout.
 	WaitUntilState(ctx context.Context, expectedState State, timeout time.Duration) error
@@ -43,8 +32,8 @@ type DependencyState[T any] interface {
 	GetDependencyStates() map[string]State
 	// IsDependencyMet returns true if the dependency with the given ID is in the desired state.
 	IsDependencyMet(id string) bool
-	// WaitForAny waits for any of the specified dependencies to be in the desired state.
-	// Returns the ID of the first dependency that is in the desired state, or an empty string if the timeout is reached.
+	// WaitForAny waits for any of the specified dependencies to reach the desired state.
+	// It returns the ID of the first dependency that reaches the desired state, or an empty string and an error if the timeout is reached or context is cancelled.
 	WaitForAny(ctx context.Context, ids []string, timeout time.Duration) (string, error)
 }
 
@@ -98,7 +87,8 @@ func newDependencyState[T any](idStateFunc IDStateFunc[T], desiredState State) *
 	return s
 }
 
-// Set sets the state of the given dependency.
+// Set sets the state of a dependency with the given ID.
+// This will trigger an assessment of the overall state.
 func (d *dependencyState[T]) Set(id string, state State) {
 	d.set(id, state, true)
 }
@@ -111,7 +101,9 @@ func (d *dependencyState[T]) set(id string, state State, assess bool) {
 	}
 }
 
-// Add adds the given dependencies to the state.
+// Add adds the given dependencies to be tracked.
+// The initial state of each dependency is determined by the idStateFunc.
+// This will trigger an assessment of the overall state.
 func (d *dependencyState[T]) Add(t ...T) {
 	for _, dep := range t {
 		id, state := d.idStateFunc(dep)
@@ -120,7 +112,8 @@ func (d *dependencyState[T]) Add(t ...T) {
 	d.assessState()
 }
 
-// Remove removes the given dependencies from the state.
+// Remove removes the given dependencies from being tracked.
+// This will trigger an assessment of the overall state.
 func (d *dependencyState[T]) Remove(t ...T) {
 	for _, dep := range t {
 		id, _ := d.idStateFunc(dep)
@@ -272,7 +265,7 @@ func (d *dependencyState[T]) calculateState() State {
 	return newState
 }
 
-// CurrentState returns the current state of the dependencies.
+// CurrentState returns the current overall state of all tracked dependencies.
 func (d *dependencyState[T]) CurrentState() State {
 	return d.currentState.Load().(State)
 }
@@ -332,8 +325,8 @@ func (d *dependencyState[T]) waitForStateChange(ctx context.Context, expectedSta
 	}
 }
 
-// WaitForDependencies waits for dependencies to be met with a timeout.
-// Returns true if dependencies are met, false if the timeout is reached.
+// WaitForDependencies waits for the overall state to become DependenciesMet with a timeout.
+// It returns true if the dependencies are met within the timeout, false otherwise.
 func (d *dependencyState[T]) WaitForDependencies(ctx context.Context, timeout time.Duration) bool {
 	return d.WaitUntilState(ctx, DependenciesMet, timeout) == nil
 }
@@ -357,8 +350,8 @@ func (d *dependencyState[T]) IsDependencyMet(id string) bool {
 	return value.(State) == d.desiredState
 }
 
-// WaitForAny waits for any of the specified dependencies to be in the desired state.
-// Returns the ID of the first dependency that is in the desired state, or an empty string if the timeout is reached.
+// WaitForAny waits for any of the specified dependencies to reach the desired state.
+// It returns the ID of the first dependency that reaches the desired state, or an empty string and an error if the timeout is reached or context is cancelled.
 func (d *dependencyState[T]) WaitForAny(ctx context.Context, ids []string, timeout time.Duration) (string, error) {
 	// Check if any dependency is already in the desired state
 	for _, id := range ids {
