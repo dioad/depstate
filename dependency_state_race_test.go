@@ -41,7 +41,7 @@ func TestConcurrentAccess(t *testing.T) {
 	// Start multiple goroutines to update the state concurrently
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			testDepOne.state = "Happy"
 			topic.Publish(testDepOne)
 			time.Sleep(time.Millisecond)
@@ -53,7 +53,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			testDepTwo.state = "Happy"
 			topic.Publish(testDepTwo)
 			time.Sleep(time.Millisecond)
@@ -65,7 +65,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			// Read the current state
 			_ = ds.CurrentState()
 			time.Sleep(time.Millisecond)
@@ -195,7 +195,7 @@ func TestRaceCondition(t *testing.T) {
 	// Start multiple goroutines to update the state concurrently
 	go func() {
 		defer updateWg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			testDepOne.state = "Sad"
 			topic.Publish(testDepOne)
 			time.Sleep(time.Millisecond)
@@ -208,7 +208,7 @@ func TestRaceCondition(t *testing.T) {
 
 	go func() {
 		defer updateWg.Done()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			testDepTwo.state = "Happy"
 			topic.Publish(testDepTwo)
 			time.Sleep(time.Millisecond)

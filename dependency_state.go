@@ -255,7 +255,7 @@ func (d *dependencyState[T]) assessState() {
 // calculateState calculates the overall state of the dependencies.
 func (d *dependencyState[T]) calculateState() State {
 	newState := DependenciesMet
-	d.dependencies.Range(func(key, value interface{}) bool {
+	d.dependencies.Range(func(key, value any) bool {
 		if value.(State) != d.desiredState {
 			newState = DependenciesNotMet
 			return false
@@ -334,7 +334,7 @@ func (d *dependencyState[T]) WaitForDependencies(ctx context.Context, timeout ti
 // GetDependencyStates returns a snapshot of all dependencies and their states.
 func (d *dependencyState[T]) GetDependencyStates() map[string]State {
 	result := make(map[string]State)
-	d.dependencies.Range(func(key, value interface{}) bool {
+	d.dependencies.Range(func(key, value any) bool {
 		result[key.(string)] = value.(State)
 		return true
 	})

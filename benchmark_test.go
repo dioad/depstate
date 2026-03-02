@@ -24,7 +24,7 @@ func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pub
 	b.Helper()
 	// Create dependencies
 	deps := make([]benchDep, numDeps)
-	for i := 0; i < numDeps; i++ {
+	for i := range numDeps {
 		deps[i] = benchDep{
 			id:    string(rune('A' + i)),
 			state: "Sad",
