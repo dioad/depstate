@@ -92,15 +92,8 @@ func newDependencyState[T any](idStateFunc IDStateFunc[T], desiredState State) *
 // Set sets the state of a dependency with the given ID.
 // This will trigger an assessment of the overall state.
 func (d *dependencyState[T]) Set(id string, state State) {
-	d.set(id, state, true)
-}
-
-// set is a helper method that sets the state of a dependency and optionally assesses the overall state.
-func (d *dependencyState[T]) set(id string, state State, assess bool) {
 	d.dependencies.Store(id, state)
-	if assess {
-		d.assessState()
-	}
+	d.assessState()
 }
 
 // Add adds the given dependencies to be tracked.
@@ -109,7 +102,7 @@ func (d *dependencyState[T]) set(id string, state State, assess bool) {
 func (d *dependencyState[T]) Add(t ...T) {
 	for _, dep := range t {
 		id, state := d.idStateFunc(dep)
-		d.set(id, state, false)
+		d.dependencies.Store(id, state)
 	}
 	d.assessState()
 }
