@@ -3,6 +3,7 @@ package depstate
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -362,6 +363,10 @@ func (d *dependencyState[T]) IsDependencyMet(id string) bool {
 // WaitForAny waits for any of the specified dependencies to reach the desired state.
 // It returns the ID of the first dependency that reaches the desired state, or an empty string and an error if the timeout is reached or context is cancelled.
 func (d *dependencyState[T]) WaitForAny(ctx context.Context, ids []string, timeout time.Duration) (string, error) {
+	if len(ids) == 0 {
+		return "", errors.New("WaitForAny requires at least one dependency ID")
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

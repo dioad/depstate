@@ -100,53 +100,29 @@ func TestContextCancellation(t *testing.T) {
 	testDepOne.state = "Happy"
 	topic.Publish(testDepOne)
 
-	// Wait for the state change with a timeout
-	var state State
-	for {
-		select {
-		case s := <-depChan:
-			state = s
-			// t.Logf("Received state change: %v", state)
-		case <-time.After(50 * time.Millisecond):
-			t.Fatalf("Timed out waiting for state change, current state: %v", ds.CurrentState())
-		}
-		if state == DependenciesMet {
-			break
-		}
-	}
-
-	// Check the current state directly as well
-	// currentState := ds.CurrentState()
-	// t.Logf("Current state: %v", currentState)
-	//
-	// // Check the dependency states
-	// depStates := ds.GetDependencyStates()
-	// for id, s := range depStates {
-	// 	t.Logf("Dependency %s state: %v", id, s)
-	// }
-
-	if state != DependenciesMet {
-		t.Errorf("Expected state to be %v, got %v", DependenciesMet, state)
+	// Wait for DependenciesMet. Using WaitForDependencies avoids a race where the
+	// DependenciesNotMet notification from Add fills the buffer-1 depChan before
+	// DependenciesMet arrives, causing the latter to be dropped by sendStateUpdate.
+	if !ds.WaitForDependencies(context.Background(), 500*time.Millisecond) {
+		t.Fatalf("Expected state to become %v, got %v", DependenciesMet, ds.CurrentState())
 	}
 
 	// Cancel the context
 	cancel()
 
-	// Wait a bit for the goroutines to clean up
-	time.Sleep(200 * time.Millisecond)
-
-	// Publish another message, which should not trigger a state change
-	testDepOne.state = "Sad"
-	topic.Publish(testDepOne)
-
-	// Try to read from the channel, which should be closed or not receive any messages
-	select {
-	case state, ok := <-depChan:
-		if ok {
-			t.Errorf("Expected channel to be closed or not receive messages, got %v", state)
+	// Wait for the goroutines to shut down and depChan to be closed.
+	// Drain any messages buffered before cancellation; the channel must
+	// eventually close (ok==false) to confirm goroutine cleanup.
+	deadline := time.After(500 * time.Millisecond)
+	for {
+		select {
+		case _, ok := <-depChan:
+			if !ok {
+				return // channel closed as expected
+			}
+		case <-deadline:
+			t.Fatal("Expected depChan to be closed after context cancellation")
 		}
-	case <-time.After(200 * time.Millisecond):
-		// This is expected, the channel should not receive any messages
 	}
 }
 
