@@ -125,10 +125,9 @@ func TestWaitForAny(t *testing.T) {
 }
 
 func TestCalculateStateEmpty(t *testing.T) {
-	// If no dependencies are tracked, it should be DependenciesMet
 	ds := newDependencyState(testIDStateFunc, State("Happy"))
-	if ds.calculateState() != DependenciesMet {
-		t.Errorf("Expected DependenciesMet for empty dependency state, got %v", ds.calculateState())
+	if ds.calculateState() != DependenciesUnknown {
+		t.Errorf("Expected DependenciesUnknown for empty dependency state, got %v", ds.calculateState())
 	}
 }
 
