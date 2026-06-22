@@ -285,24 +285,22 @@ func (d *dependencyState[T]) Chan(ctx context.Context) <-chan State {
 
 // WaitUntilState waits until the dependencies reach the expected state or timeout.
 func (d *dependencyState[T]) WaitUntilState(ctx context.Context, expectedState State, timeout time.Duration) error {
-	// If dependencies are already in the expected state, return immediately
-	if d.CurrentState() == expectedState {
-		return nil
-	}
-
 	return d.waitForStateWithTimeout(ctx, expectedState, timeout)
 }
 
 // waitForStateWithTimeout waits for the dependencies to reach the expected state with a timeout.
 func (d *dependencyState[T]) waitForStateWithTimeout(ctx context.Context, expectedState State, timeout time.Duration) error {
-	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Subscribe to state changes
+	// Subscribe before checking current state to avoid missing a transition in between.
 	rawChan := d.transitions.Subscribe()
 	stateChan := pubsub.CastChan[State](rawChan)
 	defer d.transitions.Unsubscribe(rawChan)
+
+	if d.CurrentState() == expectedState {
+		return nil
+	}
 
 	return d.waitForStateChange(ctx, expectedState, stateChan)
 }
@@ -360,28 +358,23 @@ func (d *dependencyState[T]) IsDependencyMet(id string) bool {
 // WaitForAny waits for any of the specified dependencies to reach the desired state.
 // It returns the ID of the first dependency that reaches the desired state, or an empty string and an error if the timeout is reached or context is cancelled.
 func (d *dependencyState[T]) WaitForAny(ctx context.Context, ids []string, timeout time.Duration) (string, error) {
-	// Check if any dependency is already in the desired state
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Subscribe before checking current state to avoid missing a transition in between.
+	rawChan := d.transitions.Subscribe()
+	stateChan := pubsub.CastChan[State](rawChan)
+	defer d.transitions.Unsubscribe(rawChan)
+
 	for _, id := range ids {
 		if d.IsDependencyMet(id) {
 			return id, nil
 		}
 	}
 
-	// Create a context with timeout
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	// Subscribe to state changes
-	rawChan := d.transitions.Subscribe()
-	stateChan := pubsub.CastChan[State](rawChan)
-	defer d.transitions.Unsubscribe(rawChan)
-
-	// Wait for any dependency to be in the desired state or for the context to be done
 	for {
 		select {
 		case <-ctx.Done():
-			// Timeout or context canceled
-			// Check one more time in case we missed a state change
 			for _, id := range ids {
 				if d.IsDependencyMet(id) {
 					return id, nil
@@ -390,10 +383,8 @@ func (d *dependencyState[T]) WaitForAny(ctx context.Context, ids []string, timeo
 			return "", ctx.Err()
 		case _, ok := <-stateChan:
 			if !ok {
-				// Channel closed
 				return "", ctx.Err()
 			}
-			// Check if any dependency is now in the desired state
 			for _, id := range ids {
 				if d.IsDependencyMet(id) {
 					return id, nil
