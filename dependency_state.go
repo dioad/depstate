@@ -245,11 +245,15 @@ func (d *dependencyState[T]) publishState(state State) {
 // assessState assesses the overall state of the dependencies and publishes a state change if necessary.
 func (d *dependencyState[T]) assessState() {
 	newState := d.calculateState()
-	currentState := d.currentState.Load().(State)
-
-	if newState != currentState {
-		d.currentState.Store(newState)
-		d.publishState(newState)
+	for {
+		current := d.currentState.Load().(State)
+		if current == newState {
+			return
+		}
+		if d.currentState.CompareAndSwap(current, newState) {
+			d.publishState(newState)
+			return
+		}
 	}
 }
 
