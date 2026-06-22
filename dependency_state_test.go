@@ -90,10 +90,10 @@ func TestSet(t *testing.T) {
 }
 
 func TestChan(t *testing.T) {
-	_, dep1, _, topic, ds := setupTest()
+	ctx, dep1, _, topic, ds := setupTest()
 	ds.Add(dep1)
 
-	stateChan := ds.Chan()
+	stateChan := ds.Chan(ctx)
 
 	// Update dep1 to Happy
 	dep1.state = "Happy"

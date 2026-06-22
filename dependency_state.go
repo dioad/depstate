@@ -22,7 +22,8 @@ type DependencyState[T any] interface {
 	CurrentState() State
 	// Chan returns a channel that will receive state changes.
 	// The returned channel will receive the current state of the dependencies whenever it changes.
-	Chan() <-chan State
+	// The channel is closed when ctx is cancelled.
+	Chan(ctx context.Context) <-chan State
 	// WaitForDependencies waits for the overall state to become DependenciesMet with a timeout.
 	// It returns true if the dependencies are met within the timeout, false otherwise.
 	WaitForDependencies(ctx context.Context, timeout time.Duration) bool
@@ -271,9 +272,15 @@ func (d *dependencyState[T]) CurrentState() State {
 }
 
 // Chan returns a channel that will receive the current state of the dependencies
-// whenever it changes.
-func (d *dependencyState[T]) Chan() <-chan State {
-	return pubsub.CastChan[State](d.transitions.Subscribe())
+// whenever it changes. The channel is closed when ctx is cancelled.
+func (d *dependencyState[T]) Chan(ctx context.Context) <-chan State {
+	rawChan := d.transitions.Subscribe()
+	typedChan := pubsub.CastChan[State](rawChan)
+	go func() {
+		<-ctx.Done()
+		d.transitions.Unsubscribe(rawChan)
+	}()
+	return typedChan
 }
 
 // WaitUntilState waits until the dependencies reach the expected state or timeout.

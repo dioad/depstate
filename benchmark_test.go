@@ -122,7 +122,7 @@ func BenchmarkStateChange(b *testing.B) {
 	ds.Add(deps...)
 
 	// Create a channel to receive state changes
-	stateChan := ds.Chan()
+	stateChan := ds.Chan(b.Context())
 	go func() {
 		for range stateChan {
 			// Just consume the messages
