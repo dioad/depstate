@@ -260,14 +260,19 @@ func (d *dependencyState[T]) assessState() {
 
 // calculateState calculates the overall state of the dependencies.
 func (d *dependencyState[T]) calculateState() State {
+	empty := true
 	newState := DependenciesMet
 	d.dependencies.Range(func(key, value any) bool {
+		empty = false
 		if value.(State) != d.desiredState {
 			newState = DependenciesNotMet
 			return false
 		}
 		return true
 	})
+	if empty {
+		return DependenciesUnknown
+	}
 	return newState
 }
 
