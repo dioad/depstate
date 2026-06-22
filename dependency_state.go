@@ -167,13 +167,18 @@ func (d *dependencyState[T]) cleanupSubscription(cancel context.CancelFunc, stat
 	close(resultChan)
 }
 
+// eventProcessorShutdownTimeout is the maximum time to wait for the processEvents
+// goroutine to acknowledge context cancellation. The goroutine checks ctx.Done()
+// on every iteration, so in practice it exits almost immediately; this value is
+// a safety net to prevent the outer goroutine from blocking indefinitely if the
+// events channel stalls during shutdown.
+const eventProcessorShutdownTimeout = 100 * time.Millisecond
+
 // waitForEventProcessor waits for the event processor goroutine to exit.
 func (d *dependencyState[T]) waitForEventProcessor(done <-chan struct{}) {
 	select {
 	case <-done:
-		// Event processing goroutine has exited
-	case <-time.After(100 * time.Millisecond):
-		// Timeout waiting for event processing goroutine to exit
+	case <-time.After(eventProcessorShutdownTimeout):
 	}
 }
 
