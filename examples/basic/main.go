@@ -1,3 +1,5 @@
+// Package main demonstrates basic usage of the depstate package: tracking
+// when a set of services become ready.
 package main
 
 import (
@@ -9,13 +11,13 @@ import (
 	"github.com/dioad/pubsub"
 )
 
-// Define a dependency type
+// Service represents a dependency with an ID and a ready flag.
 type Service struct {
 	ID    string
 	Ready bool
 }
 
-// Define a function to extract ID and state from a dependency
+// serviceIDStateFunc extracts the ID and state from a dependency.
 func serviceIDStateFunc(s Service) (string, depstate.State) {
 	state := depstate.DependenciesNotMet
 	if s.Ready {

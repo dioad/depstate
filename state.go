@@ -1,4 +1,3 @@
-// Package depstate provides a way to track the state of dependencies and emit events when all dependencies are in a desired state.
 package depstate
 
 // State represents the state of dependencies.

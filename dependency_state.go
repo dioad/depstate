@@ -245,7 +245,7 @@ func (d *dependencyState[T]) publishState(state State) {
 func (d *dependencyState[T]) assessState() {
 	newState := d.calculateState()
 	for {
-		current := d.currentState.Load().(State)
+		current := d.loadCurrentState()
 		if current == newState {
 			return
 		}
@@ -256,13 +256,26 @@ func (d *dependencyState[T]) assessState() {
 	}
 }
 
+// loadCurrentState returns the current overall state. currentState is only
+// ever stored as a State, so the assertion failing would indicate a bug
+// elsewhere; it is still checked to satisfy forcetypeassert and to avoid a
+// panic if that invariant is ever violated.
+func (d *dependencyState[T]) loadCurrentState() State {
+	state, ok := d.currentState.Load().(State)
+	if !ok {
+		return DependenciesUnknown
+	}
+	return state
+}
+
 // calculateState calculates the overall state of the dependencies.
 func (d *dependencyState[T]) calculateState() State {
 	empty := true
 	newState := DependenciesMet
-	d.dependencies.Range(func(key, value any) bool {
+	d.dependencies.Range(func(_, value any) bool {
 		empty = false
-		if value.(State) != d.desiredState {
+		state, ok := value.(State)
+		if !ok || state != d.desiredState {
 			newState = DependenciesNotMet
 			return false
 		}
@@ -276,7 +289,7 @@ func (d *dependencyState[T]) calculateState() State {
 
 // CurrentState returns the current overall state of all tracked dependencies.
 func (d *dependencyState[T]) CurrentState() State {
-	return d.currentState.Load().(State)
+	return d.loadCurrentState()
 }
 
 // Chan returns a channel that will receive the current state of the dependencies
@@ -348,7 +361,15 @@ func (d *dependencyState[T]) WaitForDependencies(ctx context.Context, timeout ti
 func (d *dependencyState[T]) GetDependencyStates() map[string]State {
 	result := make(map[string]State)
 	d.dependencies.Range(func(key, value any) bool {
-		result[key.(string)] = value.(State)
+		id, ok := key.(string)
+		if !ok {
+			return true
+		}
+		state, ok := value.(State)
+		if !ok {
+			return true
+		}
+		result[id] = state
 		return true
 	})
 	return result
@@ -360,7 +381,11 @@ func (d *dependencyState[T]) IsDependencyMet(id string) bool {
 	if !ok {
 		return false
 	}
-	return value.(State) == d.desiredState
+	state, ok := value.(State)
+	if !ok {
+		return false
+	}
+	return state == d.desiredState
 }
 
 // WaitForAny waits for any of the specified dependencies to reach the desired state.
@@ -378,30 +403,35 @@ func (d *dependencyState[T]) WaitForAny(ctx context.Context, ids []string, timeo
 	stateChan := pubsub.CastChan[State](rawChan)
 	defer d.transitions.Unsubscribe(rawChan)
 
-	for _, id := range ids {
-		if d.IsDependencyMet(id) {
-			return id, nil
-		}
+	if id, ok := d.firstMetDependency(ids); ok {
+		return id, nil
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			for _, id := range ids {
-				if d.IsDependencyMet(id) {
-					return id, nil
-				}
+			if id, ok := d.firstMetDependency(ids); ok {
+				return id, nil
 			}
 			return "", ctx.Err()
 		case _, ok := <-stateChan:
 			if !ok {
 				return "", ctx.Err()
 			}
-			for _, id := range ids {
-				if d.IsDependencyMet(id) {
-					return id, nil
-				}
+			if id, ok := d.firstMetDependency(ids); ok {
+				return id, nil
 			}
 		}
 	}
+}
+
+// firstMetDependency returns the first ID in ids whose dependency is currently
+// in the desired state.
+func (d *dependencyState[T]) firstMetDependency(ids []string) (string, bool) {
+	for _, id := range ids {
+		if d.IsDependencyMet(id) {
+			return id, true
+		}
+	}
+	return "", false
 }

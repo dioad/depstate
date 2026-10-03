@@ -155,7 +155,7 @@ func TestNewDependencyStateWithTopic(t *testing.T) {
 	topic.Publish(dep1, dep2)
 
 	// Assert: Verify the initial state is DependenciesNotMet
-	assertStateEquals(t, ds, DependenciesNotMet, 500*time.Millisecond)
+	assertStateEquals(t, ds, DependenciesNotMet)
 }
 
 // TestNewDependencyStateWithBuffer tests the NewDependencyStateWithBuffer function.
@@ -182,5 +182,5 @@ func TestNewDependencyStateWithBuffer(t *testing.T) {
 	topic.Publish(dep1, dep2)
 
 	// Assert: Verify the initial state is DependenciesNotMet
-	assertStateEquals(t, ds, DependenciesNotMet, 500*time.Millisecond)
+	assertStateEquals(t, ds, DependenciesNotMet)
 }

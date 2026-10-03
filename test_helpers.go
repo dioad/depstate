@@ -8,19 +8,19 @@ import (
 	"github.com/dioad/pubsub"
 )
 
-// testDep represents a test dependency with an ID and state
+// testDep represents a test dependency with an ID and state.
 type testDep struct {
 	id    string
 	state string
 }
 
-// testIDStateFunc extracts the ID and state from a testDep
+// testIDStateFunc extracts the ID and state from a testDep.
 func testIDStateFunc(t testDep) (string, State) {
 	return t.id, State(t.state)
 }
 
-// setupTest creates a common test setup with two dependencies
-// Returns the context, dependencies, topic, and dependency state tracker
+// setupTest creates a common test setup with two dependencies.
+// Returns the context, dependencies, topic, and dependency state tracker.
 func setupTest() (context.Context, testDep, testDep, pubsub.Topic, DependencyState[testDep]) {
 	// Arrange: Create test dependencies
 	dep1 := testDep{id: "1", state: "Sad"}
@@ -39,13 +39,17 @@ func setupTest() (context.Context, testDep, testDep, pubsub.Topic, DependencySta
 	return ctx, dep1, dep2, topic, ds
 }
 
-// assertStateEquals asserts that the current state equals the expected state
-// Waits for the state to change if necessary
-func assertStateEquals(t *testing.T, ds DependencyState[testDep], expectedState State, timeout time.Duration) {
+// assertStateEqualsTimeout is the timeout used by assertStateEquals when
+// waiting for the dependency state to reach the expected value.
+const assertStateEqualsTimeout = 500 * time.Millisecond
+
+// assertStateEquals asserts that the current state equals the expected state.
+// Waits for the state to change if necessary.
+func assertStateEquals(t *testing.T, ds DependencyState[testDep], expectedState State) {
 	t.Helper()
 
 	// Wait for the state to change to the expected state
-	err := ds.WaitUntilState(context.Background(), expectedState, timeout)
+	err := ds.WaitUntilState(context.Background(), expectedState, assertStateEqualsTimeout)
 	if err != nil {
 		t.Fatalf("Failed to reach state %v: %v", expectedState, err)
 	}

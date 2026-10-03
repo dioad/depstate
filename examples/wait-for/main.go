@@ -1,3 +1,5 @@
+// Package main demonstrates using WaitForDependencies and GetDependencyStates
+// to wait for a set of tracked services to be running.
 package main
 
 import (
@@ -9,16 +11,21 @@ import (
 	"github.com/dioad/pubsub"
 )
 
-// Define a dependency type
+const (
+	statusRunning = "Running"
+	statusStopped = "Stopped"
+)
+
+// Service represents a dependency with an ID and a running status.
 type Service struct {
 	ID     string
 	Status string
 }
 
-// Define a function to extract ID and state from a dependency
+// serviceIDStateFunc extracts the ID and state from a dependency.
 func serviceIDStateFunc(s Service) (string, depstate.State) {
 	state := depstate.DependenciesNotMet
-	if s.Status == "Running" {
+	if s.Status == statusRunning {
 		state = depstate.DependenciesMet
 	}
 	return s.ID, state
@@ -36,9 +43,9 @@ func main() {
 	ds, _ := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
 
 	// Add services to track
-	service1 := Service{ID: "service1", Status: "Stopped"}
-	service2 := Service{ID: "service2", Status: "Stopped"}
-	service3 := Service{ID: "service3", Status: "Stopped"}
+	service1 := Service{ID: "service1", Status: statusStopped}
+	service2 := Service{ID: "service2", Status: statusStopped}
+	service3 := Service{ID: "service3", Status: statusStopped}
 	ds.Add(service1, service2, service3)
 
 	// Get the current state of all dependencies
@@ -52,17 +59,17 @@ func main() {
 	go func() {
 		time.Sleep(1 * time.Second)
 		fmt.Println("Starting service1...")
-		service1.Status = "Running"
+		service1.Status = statusRunning
 		topic.Publish(service1)
 
 		time.Sleep(1 * time.Second)
 		fmt.Println("Starting service2...")
-		service2.Status = "Running"
+		service2.Status = statusRunning
 		topic.Publish(service2)
 
 		time.Sleep(1 * time.Second)
 		fmt.Println("Starting service3...")
-		service3.Status = "Running"
+		service3.Status = statusRunning
 		topic.Publish(service3)
 	}()
 

@@ -8,18 +8,18 @@ import (
 	"github.com/dioad/pubsub"
 )
 
-// benchDep is a simple dependency type for benchmarking
+// benchDep is a simple dependency type for benchmarking.
 type benchDep struct {
 	id    string
 	state string
 }
 
-// benchIDStateFunc extracts the ID and state from a benchDep
+// benchIDStateFunc extracts the ID and state from a benchDep.
 func benchIDStateFunc(d benchDep) (string, State) {
 	return d.id, State(d.state)
 }
 
-// setupBenchmark creates a common benchmark setup
+// setupBenchmark creates a common benchmark setup.
 func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pubsub.Topic, DependencyState[benchDep]) {
 	b.Helper()
 	// Create dependencies
@@ -44,18 +44,18 @@ func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pub
 	return ctx, deps, topic, ds
 }
 
-// BenchmarkAdd measures the performance of adding dependencies
+// BenchmarkAdd measures the performance of adding dependencies.
 func BenchmarkAdd(b *testing.B) {
 	ctx, deps, _, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ds.Add(deps...)
 	}
 }
 
-// BenchmarkSet measures the performance of setting dependency states
+// BenchmarkSet measures the performance of setting dependency states.
 func BenchmarkSet(b *testing.B) {
 	ctx, deps, _, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
@@ -64,14 +64,14 @@ func BenchmarkSet(b *testing.B) {
 	ds.Add(deps...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, dep := range deps {
 			ds.Set(dep.id, State("Happy"))
 		}
 	}
 }
 
-// BenchmarkCurrentState measures the performance of getting the current state
+// BenchmarkCurrentState measures the performance of getting the current state.
 func BenchmarkCurrentState(b *testing.B) {
 	ctx, deps, _, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
@@ -80,12 +80,12 @@ func BenchmarkCurrentState(b *testing.B) {
 	ds.Add(deps...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = ds.CurrentState()
 	}
 }
 
-// BenchmarkGetDependencyStates measures the performance of getting all dependency states
+// BenchmarkGetDependencyStates measures the performance of getting all dependency states.
 func BenchmarkGetDependencyStates(b *testing.B) {
 	ctx, deps, _, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
@@ -94,12 +94,12 @@ func BenchmarkGetDependencyStates(b *testing.B) {
 	ds.Add(deps...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = ds.GetDependencyStates()
 	}
 }
 
-// BenchmarkIsDependencyMet measures the performance of checking if a dependency is met
+// BenchmarkIsDependencyMet measures the performance of checking if a dependency is met.
 func BenchmarkIsDependencyMet(b *testing.B) {
 	ctx, deps, _, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
@@ -108,12 +108,12 @@ func BenchmarkIsDependencyMet(b *testing.B) {
 	ds.Add(deps...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = ds.IsDependencyMet(deps[0].id)
 	}
 }
 
-// BenchmarkStateChange measures the performance of state changes
+// BenchmarkStateChange measures the performance of state changes.
 func BenchmarkStateChange(b *testing.B) {
 	ctx, deps, topic, ds := setupBenchmark(b, 10)
 	defer ctx.Done()
@@ -130,7 +130,7 @@ func BenchmarkStateChange(b *testing.B) {
 	}()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Change all dependencies to Happy
 		for j := range deps {
 			deps[j].state = "Happy"
@@ -145,7 +145,7 @@ func BenchmarkStateChange(b *testing.B) {
 	}
 }
 
-// BenchmarkWaitForDependencies measures the performance of waiting for dependencies
+// BenchmarkWaitForDependencies measures the performance of waiting for dependencies.
 func BenchmarkWaitForDependencies(b *testing.B) {
 	ctx, deps, topic, ds := setupBenchmark(b, 3)
 	defer ctx.Done()
@@ -154,7 +154,7 @@ func BenchmarkWaitForDependencies(b *testing.B) {
 	ds.Add(deps...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Set up a goroutine to make all dependencies happy after a short delay
 		go func() {
 			time.Sleep(1 * time.Millisecond)
@@ -176,7 +176,7 @@ func BenchmarkWaitForDependencies(b *testing.B) {
 	}
 }
 
-// BenchmarkWaitForAny measures the performance of waiting for any dependency
+// BenchmarkWaitForAny measures the performance of waiting for any dependency.
 func BenchmarkWaitForAny(b *testing.B) {
 	ctx, deps, topic, ds := setupBenchmark(b, 3)
 	defer ctx.Done()
@@ -191,7 +191,7 @@ func BenchmarkWaitForAny(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Set up a goroutine to make one dependency happy after a short delay
 		go func() {
 			time.Sleep(1 * time.Millisecond)

@@ -11,7 +11,7 @@ import (
 
 // TestConcurrentAccess tests that concurrent access to the dependency state
 // doesn't cause race conditions.
-func TestConcurrentAccess(t *testing.T) {
+func TestConcurrentAccess(_ *testing.T) {
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
