@@ -1,15 +1,13 @@
-name: depstate
+name: dioad/depstate
 version: 1.0.0
-description: APM project for depstate
+description: APM project for dioad/depstate
 author: Pat Downey
-# Which agent platforms to deploy to.
-# Resolution order: --target flag > this field > auto-detect from filesystem.
-# Accepted values: copilot, claude, cursor, opencode, codex, gemini, windsurf, all
 targets:
 - claude
 - copilot
 dependencies:
-  apm: []
+  apm:
+  - dioad/agent-skills
   mcp: []
 includes: auto
 scripts: {}
