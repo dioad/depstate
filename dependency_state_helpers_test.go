@@ -10,6 +10,8 @@ import (
 
 // TestIsDependencyMet tests the IsDependencyMet method.
 func TestIsDependencyMet(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test
 	_, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
@@ -60,6 +62,8 @@ func TestIsDependencyMet(t *testing.T) {
 
 // TestWaitForAny tests the WaitForAny method.
 func TestWaitForAny(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test
 	ctx, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
@@ -125,6 +129,8 @@ func TestWaitForAny(t *testing.T) {
 }
 
 func TestCalculateStateEmpty(t *testing.T) {
+	t.Parallel()
+
 	ds := newDependencyState(testIDStateFunc, State("Happy"))
 	if ds.calculateState() != DependenciesUnknown {
 		t.Errorf("Expected DependenciesUnknown for empty dependency state, got %v", ds.calculateState())
@@ -133,6 +139,8 @@ func TestCalculateStateEmpty(t *testing.T) {
 
 // TestNewDependencyStateWithTopic tests the NewDependencyStateWithTopic function.
 func TestNewDependencyStateWithTopic(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Create a topic and dependencies
 	topic := pubsub.NewTopic()
 	dep1 := testDep{id: "1", state: "Sad"}
@@ -160,6 +168,8 @@ func TestNewDependencyStateWithTopic(t *testing.T) {
 
 // TestNewDependencyStateWithBuffer tests the NewDependencyStateWithBuffer function.
 func TestNewDependencyStateWithBuffer(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Create a topic and dependencies
 	topic := pubsub.NewTopic()
 	dep1 := testDep{id: "1", state: "Sad"}

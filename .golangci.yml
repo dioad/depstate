@@ -15,7 +15,6 @@ linters:
     - nlreturn
     - testpackage
     - depguard
-    - paralleltest
     - varnamelen
     - forbidigo
     - funlen

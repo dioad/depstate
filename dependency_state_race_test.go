@@ -11,7 +11,9 @@ import (
 
 // TestConcurrentAccess tests that concurrent access to the dependency state
 // doesn't cause race conditions.
-func TestConcurrentAccess(_ *testing.T) {
+func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
@@ -78,6 +80,8 @@ func TestConcurrentAccess(_ *testing.T) {
 
 // TestContextCancellation tests that canceling the context properly cleans up resources.
 func TestContextCancellation(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
@@ -129,6 +133,8 @@ func TestContextCancellation(t *testing.T) {
 // TestRaceCondition tests that the dependency state correctly handles race conditions
 // when multiple goroutines are updating the state concurrently.
 func TestRaceCondition(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",

@@ -7,6 +7,8 @@ import (
 
 // TestInitialDependencyState tests that the initial state is correct after adding dependencies.
 func TestInitialDependencyState(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test
 	_, dep1, dep2, topic, ds := setupTest()
 
@@ -20,6 +22,8 @@ func TestInitialDependencyState(t *testing.T) {
 
 // TestPartialDependencyUpdate tests that updating only one dependency doesn't change the overall state.
 func TestPartialDependencyUpdate(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test with dependencies added
 	_, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
@@ -37,6 +41,8 @@ func TestPartialDependencyUpdate(t *testing.T) {
 
 // TestAllDependenciesMet tests that updating all dependencies to the desired state changes the overall state.
 func TestAllDependenciesMet(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test with dependencies added and one already updated
 	_, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
@@ -54,6 +60,8 @@ func TestAllDependenciesMet(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
+	t.Parallel()
+
 	_, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
 	topic.Publish(dep1, dep2)
@@ -71,6 +79,8 @@ func TestRemove(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
+	t.Parallel()
+
 	_, dep1, dep2, _, ds := setupTest()
 	ds.Add(dep1, dep2)
 
@@ -90,6 +100,8 @@ func TestSet(t *testing.T) {
 }
 
 func TestChan(t *testing.T) {
+	t.Parallel()
+
 	ctx, dep1, _, topic, ds := setupTest()
 	ds.Add(dep1)
 
@@ -111,6 +123,8 @@ func TestChan(t *testing.T) {
 
 // TestDependencyStateTransitions tests state transitions when dependencies change.
 func TestDependencyStateTransitions(t *testing.T) {
+	t.Parallel()
+
 	// Arrange: Set up the test with all dependencies in the desired state
 	_, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)

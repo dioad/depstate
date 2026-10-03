@@ -10,6 +10,8 @@ import (
 
 // TestWaitForDependencies tests the WaitForDependencies method.
 func TestWaitForDependencies(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
@@ -57,6 +59,8 @@ func TestWaitForDependencies(t *testing.T) {
 
 // TestGetDependencyStates tests the GetDependencyStates method.
 func TestGetDependencyStates(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
@@ -103,6 +107,8 @@ func TestGetDependencyStates(t *testing.T) {
 // TestWaitForDependenciesContextCancellation tests that WaitForDependencies
 // returns when the context is canceled.
 func TestWaitForDependenciesContextCancellation(t *testing.T) {
+	t.Parallel()
+
 	testDepOne := testDep{
 		id:    "1",
 		state: "Sad",
