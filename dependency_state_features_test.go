@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dioad/pubsub"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestWaitForDependencies tests the WaitForDependencies method.
@@ -39,9 +40,7 @@ func TestWaitForDependencies(t *testing.T) {
 
 	// Wait for dependencies to be met with a timeout
 	result := ds.WaitForDependencies(context.Background(), 500*time.Millisecond)
-	if !result {
-		t.Errorf("Expected WaitForDependencies to return true, got false")
-	}
+	assert.True(t, result, "expected WaitForDependencies to return true")
 
 	// Test timeout
 	testDepOne.state = "Sad"
@@ -52,9 +51,7 @@ func TestWaitForDependencies(t *testing.T) {
 
 	// Wait for dependencies to be met with a short timeout
 	result = ds.WaitForDependencies(context.Background(), 10*time.Millisecond)
-	if result {
-		t.Errorf("Expected WaitForDependencies to return false due to timeout, got true")
-	}
+	assert.False(t, result, "expected WaitForDependencies to return false due to timeout")
 }
 
 // TestGetDependencyStates tests the GetDependencyStates method.
@@ -78,17 +75,9 @@ func TestGetDependencyStates(t *testing.T) {
 
 	// Get dependency states
 	states := ds.GetDependencyStates()
-	if len(states) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d", len(states))
-	}
-
-	if states["1"] != "Sad" {
-		t.Errorf("Expected state of dependency 1 to be Sad, got %v", states["1"])
-	}
-
-	if states["2"] != "Happy" {
-		t.Errorf("Expected state of dependency 2 to be Happy, got %v", states["2"])
-	}
+	assert.Len(t, states, 2)
+	assert.Equal(t, State("Sad"), states["1"])
+	assert.Equal(t, State("Happy"), states["2"])
 
 	// Update a dependency
 	testDepOne.state = "Happy"
@@ -99,9 +88,7 @@ func TestGetDependencyStates(t *testing.T) {
 
 	// Get dependency states again
 	states = ds.GetDependencyStates()
-	if states["1"] != "Happy" {
-		t.Errorf("Expected state of dependency 1 to be Happy, got %v", states["1"])
-	}
+	assert.Equal(t, State("Happy"), states["1"])
 }
 
 // TestWaitForDependenciesContextCancellation tests that WaitForDependencies
@@ -131,7 +118,5 @@ func TestWaitForDependenciesContextCancellation(t *testing.T) {
 
 	// Wait for dependencies to be met with a long timeout
 	result := ds.WaitForDependencies(ctx, 1*time.Second)
-	if result {
-		t.Errorf("Expected WaitForDependencies to return false due to context cancellation, got true")
-	}
+	assert.False(t, result, "expected WaitForDependencies to return false due to context cancellation")
 }

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/dioad/pubsub"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // testDep represents a test dependency with an ID and state.
@@ -50,14 +52,10 @@ func assertStateEquals(t *testing.T, ds DependencyState[testDep], expectedState 
 
 	// Wait for the state to change to the expected state
 	err := ds.WaitUntilState(context.Background(), expectedState, assertStateEqualsTimeout)
-	if err != nil {
-		t.Fatalf("Failed to reach state %v: %v", expectedState, err)
-	}
+	require.NoErrorf(t, err, "failed to reach state %v", expectedState)
 
 	// Verify the current state directly
-	if ds.CurrentState() != expectedState {
-		t.Errorf("Expected state to be %v, got %v", expectedState, ds.CurrentState())
-	}
+	assert.Equal(t, expectedState, ds.CurrentState())
 }
 
 // waitForStateChange waits for a state change with a timeout

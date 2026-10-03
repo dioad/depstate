@@ -3,6 +3,9 @@ package depstate
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestInitialDependencyState tests that the initial state is correct after adding dependencies.
@@ -86,16 +89,12 @@ func TestSet(t *testing.T) {
 
 	// Manually set state for dep1
 	ds.Set("1", "Happy")
-	if !ds.IsDependencyMet("1") {
-		t.Errorf("Expected dep1 to be met")
-	}
+	assert.True(t, ds.IsDependencyMet("1"), "expected dep1 to be met")
 	assertStateEquals(t, ds, DependenciesNotMet)
 
 	// Manually set state for dep2
 	ds.Set("2", "Happy")
-	if !ds.IsDependencyMet("2") {
-		t.Errorf("Expected dep2 to be met")
-	}
+	assert.True(t, ds.IsDependencyMet("2"), "expected dep2 to be met")
 	assertStateEquals(t, ds, DependenciesMet)
 }
 
@@ -113,11 +112,9 @@ func TestChan(t *testing.T) {
 
 	select {
 	case state := <-stateChan:
-		if state != DependenciesMet {
-			t.Errorf("Expected state DependenciesMet from Chan, got %v", state)
-		}
+		assert.Equal(t, DependenciesMet, state)
 	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timed out waiting for state change from Chan")
+		require.Fail(t, "timed out waiting for state change from Chan")
 	}
 }
 

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/dioad/pubsub"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestConcurrentAccess tests that concurrent access to the dependency state
@@ -96,9 +98,7 @@ func TestContextCancellation(t *testing.T) {
 
 	// Check initial state
 	initialState := ds.CurrentState()
-	if initialState != DependenciesNotMet {
-		t.Errorf("Expected initial state to be %v, got %v", DependenciesNotMet, initialState)
-	}
+	assert.Equal(t, DependenciesNotMet, initialState)
 
 	// Publish a message to trigger a state change
 	testDepOne.state = "Happy"
@@ -107,9 +107,8 @@ func TestContextCancellation(t *testing.T) {
 	// Wait for DependenciesMet. Using WaitForDependencies avoids a race where the
 	// DependenciesNotMet notification from Add fills the buffer-1 depChan before
 	// DependenciesMet arrives, causing the latter to be dropped by sendStateUpdate.
-	if !ds.WaitForDependencies(context.Background(), 500*time.Millisecond) {
-		t.Fatalf("Expected state to become %v, got %v", DependenciesMet, ds.CurrentState())
-	}
+	require.True(t, ds.WaitForDependencies(context.Background(), 500*time.Millisecond),
+		"expected state to become %v, got %v", DependenciesMet, ds.CurrentState())
 
 	// Cancel the context
 	cancel()
@@ -125,7 +124,7 @@ func TestContextCancellation(t *testing.T) {
 				return // channel closed as expected
 			}
 		case <-deadline:
-			t.Fatal("Expected depChan to be closed after context cancellation")
+			require.Fail(t, "expected depChan to be closed after context cancellation")
 		}
 	}
 }
@@ -154,9 +153,7 @@ func TestRaceCondition(t *testing.T) {
 
 	// Check initial state
 	initialState := ds.CurrentState()
-	if initialState != DependenciesNotMet {
-		t.Errorf("Expected initial state to be %v, got %v", DependenciesNotMet, initialState)
-	}
+	assert.Equal(t, DependenciesNotMet, initialState)
 
 	// Use a WaitGroup to wait for the update goroutines to finish
 	var updateWg sync.WaitGroup
@@ -228,7 +225,7 @@ func TestRaceCondition(t *testing.T) {
 	case <-stateDone:
 		t.Logf("State change collector finished")
 	case <-time.After(500 * time.Millisecond):
-		t.Fatalf("Timed out waiting for state change collector to finish")
+		require.Fail(t, "timed out waiting for state change collector to finish")
 	}
 
 	// Now it's safe to close and read from stateChanges
@@ -239,7 +236,5 @@ func TestRaceCondition(t *testing.T) {
 	}
 	t.Logf("Received %d state changes", changes)
 
-	if changes == 0 {
-		t.Errorf("Expected to receive state changes, got none")
-	}
+	assert.NotZero(t, changes, "expected to receive state changes, got none")
 }
