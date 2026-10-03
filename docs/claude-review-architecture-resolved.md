@@ -135,3 +135,15 @@ _Reviewed: 2026-06-18 — See [open findings](./claude-review-architecture.md)_
 - **Resolved in:** bd6ddda
 - **Description:** Three functions (`waitForStateChange`, `publishDependencyState`, `setupDependencies`) were fully commented out with no TODO or explanation.
 - **Outcome:** Deleted the commented blocks; git history preserves them if ever needed again. Complexity delta: N/A (no live code affected).
+
+---
+
+### 13. `time.Sleep` used for synchronisation throughout tests and benchmarks ✅ Resolved
+
+- **File(s):** `dependency_state_features_test.go`, `dependency_state_helpers_test.go`, `dependency_state_race_test.go`, `benchmark_test.go`
+- **Dimension(s):** Correctness, Maintainability
+- **Priority:** Medium
+- **Resolved in:** 7084d5f
+- **Description:** Multiple tests called `time.Sleep` before an assertion to let an asynchronous state change propagate. On a loaded CI machine an insufficient sleep duration risks flakiness.
+- **Outcome:** Replaced each pre-assertion sleep with the library's own synchronisation primitives: `TestWaitForDependencies` and `TestGetDependencyStates` now use `assertStateEquals`/`WaitForAny`; `TestWaitForAny`'s ordering check now waits for the specific dependency it depends on instead of guessing a duration. `TestIsDependencyMet` needed a new helper, `waitForDependencyMet` (a bounded poll on `IsDependencyMet`), because the `transitions` topic underlying `WaitUntilState`/`WaitForAny` only publishes when the *overall* state changes — when only one of two dependencies becomes met, no transition fires for `WaitForAny` to catch, so it would otherwise block for the full timeout before its fallback check succeeds (confirmed empirically: an initial `WaitForAny`-based attempt took a deterministic 1.00s per run instead of ~0ms). `BenchmarkWaitForDependencies` resets via `WaitUntilState` the same way; `BenchmarkWaitForAny` keeps its sleep, documented with a comment, since only one of its three dependencies ever toggles and the overall state never transitions there either — no event exists to wait on. Removed one more sleep in `TestRaceCondition` that gated only `t.Logf` debug output, not an assertion. Left untouched, deliberately: the inter-publish pacing sleeps inside `TestConcurrentAccess`/`TestRaceCondition`'s stress loops, and the producer-delay sleeps inside goroutines in `TestWaitForAny`/`TestWaitForDependencies`/`TestWaitForDependenciesContextCancellation` — none of those gate an assertion's correctness. Complexity deltas: all touched functions unchanged; new helper `waitForDependencyMet` at 1 (no prior baseline, new code).
+- **Follow-up:** while stress-testing this fix (`go test -race -count=1` in a loop), found a separate pre-existing flaky `Example_basic` in `example_test.go`, unrelated to any change in this pass. Filed as new open finding 13 in [open findings](./claude-review-architecture.md) rather than fixed inline, since the correct fix is a documentation design choice, not a mechanical sleep replacement.
