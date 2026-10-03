@@ -58,7 +58,7 @@ func TestWaitForAny(t *testing.T) {
 
 	// Act & Assert: Initially, no dependencies are met, so WaitForAny should timeout
 	id, err := ds.WaitForAny(ctx, []string{dep1.id, dep2.id}, 50*time.Millisecond)
-	assert.Error(t, err, "expected WaitForAny to timeout, but it returned %s", id)
+	require.Error(t, err, "expected WaitForAny to timeout, but it returned %s", id)
 
 	// Act: Update the first dependency to the desired state in a goroutine
 	go func() {
@@ -91,11 +91,11 @@ func TestWaitForAny(t *testing.T) {
 
 	// Act & Assert: WaitForAny should return an error for an empty list
 	id, err = ds.WaitForAny(ctx, []string{}, 50*time.Millisecond)
-	assert.Error(t, err, "expected WaitForAny to return an error for an empty list, but it returned %s", id)
+	require.Error(t, err, "expected WaitForAny to return an error for an empty list, but it returned %s", id)
 
 	// Act & Assert: WaitForAny should return an error for a list with non-existent dependencies
 	id, err = ds.WaitForAny(ctx, []string{"non-existent"}, 50*time.Millisecond)
-	assert.Error(t, err, "expected WaitForAny to return an error for non-existent dependencies, but it returned %s", id)
+	require.Error(t, err, "expected WaitForAny to return an error for non-existent dependencies, but it returned %s", id)
 }
 
 func TestCalculateStateEmpty(t *testing.T) {
