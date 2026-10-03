@@ -31,38 +31,43 @@ func Example_basic() {
 	// Create a topic to publish service events
 	topic := pubsub.NewTopic()
 
-	// Create a dependency state tracker
+	// Create a dependency state tracker. SubscribeWithBuffer avoids dropping
+	// an event if it's published before the previous one has been processed
+	// (topic.Subscribe's buffer is only 1).
 	ctx := context.Background()
-	ds, depChan := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.Subscribe())
+	ds, depChan := depstate.NewDependencyState(ctx, serviceIDStateFunc, depstate.DependenciesMet, topic.SubscribeWithBuffer(10))
 
-	// Add services to track
+	printState := func(state depstate.State) {
+		if state == depstate.DependenciesMet {
+			fmt.Println("All services are ready!")
+		} else {
+			fmt.Println("Not all services are ready yet.")
+		}
+	}
+
+	// Add services to track. This publishes the initial transition to
+	// DependenciesNotMet, drained below before depChan is used for the one
+	// transition this example cares about.
 	service1 := Service{ID: "service1", Ready: false}
 	service2 := Service{ID: "service2", Ready: false}
 	ds.Add(service1, service2)
 
-	// Start a goroutine to wait for all services to be ready
-	go func() {
-		for state := range depChan {
-			if state == depstate.DependenciesMet {
-				fmt.Println("All services are ready!")
-			} else {
-				fmt.Println("Not all services are ready yet.")
-			}
-		}
-	}()
-
-	// Simulate services becoming ready
 	fmt.Println("Initial state:", ds.CurrentState())
+	<-depChan
 
 	fmt.Println("Making service1 ready...")
 	service1.Ready = true
 	topic.Publish(service1)
-	time.Sleep(10 * time.Millisecond) // Give time for the update to be processed
+	// service2 isn't ready yet, so the overall state doesn't change and no
+	// new transition is published on depChan; read it directly instead.
+	printState(ds.CurrentState())
 
 	fmt.Println("Making service2 ready...")
 	service2.Ready = true
 	topic.Publish(service2)
-	time.Sleep(10 * time.Millisecond) // Give time for the update to be processed
+	// Every service is now ready: this does flip the overall state, so wait
+	// for the transition instead of guessing how long that takes.
+	printState(<-depChan)
 
 	fmt.Println("Final state:", ds.CurrentState())
 
