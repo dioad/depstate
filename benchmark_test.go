@@ -35,8 +35,8 @@ func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pub
 	topic := pubsub.NewTopic()
 	topicChan := topic.SubscribeWithBuffer(numDeps * 2)
 
-	// Create context
-	ctx := context.Background()
+	// Create context, cancelled automatically when the benchmark returns.
+	ctx := b.Context()
 
 	// Create the dependency state tracker
 	ds, _ := NewDependencyState(ctx, benchIDStateFunc, State("Happy"), topicChan)
@@ -46,8 +46,7 @@ func setupBenchmark(b *testing.B, numDeps int) (context.Context, []benchDep, pub
 
 // BenchmarkAdd measures the performance of adding dependencies.
 func BenchmarkAdd(b *testing.B) {
-	ctx, deps, _, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, _, ds := setupBenchmark(b, 10)
 
 	b.ResetTimer()
 	for range b.N {
@@ -57,8 +56,7 @@ func BenchmarkAdd(b *testing.B) {
 
 // BenchmarkSet measures the performance of setting dependency states.
 func BenchmarkSet(b *testing.B) {
-	ctx, deps, _, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, _, ds := setupBenchmark(b, 10)
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -73,8 +71,7 @@ func BenchmarkSet(b *testing.B) {
 
 // BenchmarkCurrentState measures the performance of getting the current state.
 func BenchmarkCurrentState(b *testing.B) {
-	ctx, deps, _, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, _, ds := setupBenchmark(b, 10)
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -87,8 +84,7 @@ func BenchmarkCurrentState(b *testing.B) {
 
 // BenchmarkGetDependencyStates measures the performance of getting all dependency states.
 func BenchmarkGetDependencyStates(b *testing.B) {
-	ctx, deps, _, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, _, ds := setupBenchmark(b, 10)
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -101,8 +97,7 @@ func BenchmarkGetDependencyStates(b *testing.B) {
 
 // BenchmarkIsDependencyMet measures the performance of checking if a dependency is met.
 func BenchmarkIsDependencyMet(b *testing.B) {
-	ctx, deps, _, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, _, ds := setupBenchmark(b, 10)
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -115,8 +110,7 @@ func BenchmarkIsDependencyMet(b *testing.B) {
 
 // BenchmarkStateChange measures the performance of state changes.
 func BenchmarkStateChange(b *testing.B) {
-	ctx, deps, topic, ds := setupBenchmark(b, 10)
-	defer ctx.Done()
+	_, deps, topic, ds := setupBenchmark(b, 10)
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -148,7 +142,6 @@ func BenchmarkStateChange(b *testing.B) {
 // BenchmarkWaitForDependencies measures the performance of waiting for dependencies.
 func BenchmarkWaitForDependencies(b *testing.B) {
 	ctx, deps, topic, ds := setupBenchmark(b, 3)
-	defer ctx.Done()
 
 	// Add dependencies first
 	ds.Add(deps...)
@@ -179,7 +172,6 @@ func BenchmarkWaitForDependencies(b *testing.B) {
 // BenchmarkWaitForAny measures the performance of waiting for any dependency.
 func BenchmarkWaitForAny(b *testing.B) {
 	ctx, deps, topic, ds := setupBenchmark(b, 3)
-	defer ctx.Done()
 
 	// Add dependencies first
 	ds.Add(deps...)
