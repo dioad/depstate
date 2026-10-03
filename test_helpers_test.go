@@ -57,3 +57,22 @@ func assertStateEquals(t *testing.T, ds DependencyState[testDep], expectedState 
 	// Verify the current state directly
 	assert.Equal(t, expectedState, ds.CurrentState())
 }
+
+// waitForDependencyMetPollInterval is the polling cadence used by
+// waitForDependencyMet.
+const waitForDependencyMetPollInterval = time.Millisecond
+
+// waitForDependencyMet polls IsDependencyMet until it returns true or the
+// timeout elapses. The transitions topic underlying WaitUntilState and
+// WaitForAny only publishes when the *overall* state changes, so there is no
+// event to wait on for a single dependency whose update doesn't flip the
+// aggregate state.
+func waitForDependencyMet(t *testing.T, ds DependencyState[testDep], id string, timeout time.Duration) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for !ds.IsDependencyMet(id) {
+		require.Falsef(t, time.Now().After(deadline), "timed out waiting for dependency %s to be met", id)
+		time.Sleep(waitForDependencyMetPollInterval)
+	}
+}

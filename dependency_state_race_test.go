@@ -202,9 +202,6 @@ func TestRaceCondition(t *testing.T) {
 	updateWg.Wait()
 	t.Logf("All update goroutines finished")
 
-	// Wait a bit for any pending state changes
-	time.Sleep(50 * time.Millisecond)
-
 	// Check the current state
 	currentState := ds.CurrentState()
 	t.Logf("Current state after updates: %v", currentState)

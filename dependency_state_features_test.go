@@ -7,6 +7,7 @@ import (
 
 	"github.com/dioad/pubsub"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWaitForDependencies tests the WaitForDependencies method.
@@ -46,8 +47,8 @@ func TestWaitForDependencies(t *testing.T) {
 	testDepOne.state = "Sad"
 	topic.Publish(testDepOne)
 
-	// Wait for a bit to ensure the state change is processed
-	time.Sleep(10 * time.Millisecond)
+	// Wait for the state change to be processed before testing the short timeout below.
+	assertStateEquals(t, ds, DependenciesNotMet)
 
 	// Wait for dependencies to be met with a short timeout
 	result = ds.WaitForDependencies(context.Background(), 10*time.Millisecond)
@@ -83,8 +84,9 @@ func TestGetDependencyStates(t *testing.T) {
 	testDepOne.state = "Happy"
 	topic.Publish(testDepOne)
 
-	// Wait for a bit to ensure the state change is processed
-	time.Sleep(10 * time.Millisecond)
+	// Wait for the state change to be processed before re-reading states.
+	_, err := ds.WaitForAny(context.Background(), []string{testDepOne.id}, time.Second)
+	require.NoError(t, err)
 
 	// Get dependency states again
 	states = ds.GetDependencyStates()

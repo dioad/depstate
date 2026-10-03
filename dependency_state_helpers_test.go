@@ -15,7 +15,7 @@ func TestIsDependencyMet(t *testing.T) {
 	t.Parallel()
 
 	// Arrange: Set up the test
-	_, dep1, dep2, topic, ds := setupTest()
+	ctx, dep1, dep2, topic, ds := setupTest()
 	ds.Add(dep1, dep2)
 
 	// Act & Assert: Initially, no dependencies are met
@@ -26,8 +26,10 @@ func TestIsDependencyMet(t *testing.T) {
 	dep1.state = "Happy"
 	topic.Publish(dep1)
 
-	// Wait for the state change to be processed
-	time.Sleep(50 * time.Millisecond)
+	// Wait for the state change to be processed. dep2 is still Sad at this
+	// point, so the overall state doesn't flip and WaitForAny has no event
+	// to catch; poll the per-dependency state directly instead.
+	waitForDependencyMet(t, ds, dep1.id, time.Second)
 
 	// Assert: First dependency should be met, second should not
 	assert.True(t, ds.IsDependencyMet(dep1.id), "expected dependency %s to be met after update", dep1.id)
@@ -37,8 +39,10 @@ func TestIsDependencyMet(t *testing.T) {
 	dep2.state = "Happy"
 	topic.Publish(dep2)
 
-	// Wait for the state change to be processed
-	time.Sleep(50 * time.Millisecond)
+	// Wait for the state change to be processed: both now happy flips the
+	// overall state, so WaitForAny has a real event to catch here.
+	_, err := ds.WaitForAny(ctx, []string{dep2.id}, time.Second)
+	require.NoError(t, err)
 
 	// Assert: Both dependencies should be met
 	assert.True(t, ds.IsDependencyMet(dep1.id), "expected dependency %s to still be met", dep1.id)
@@ -76,8 +80,10 @@ func TestWaitForAny(t *testing.T) {
 	dep2.state = "Happy"
 	topic.Publish(dep2)
 
-	// Wait for the state change to be processed
-	time.Sleep(50 * time.Millisecond)
+	// Wait for dep2 to be processed: the ordering check below relies on
+	// both dependencies being met, not just dep1 (which is met already).
+	_, err = ds.WaitForAny(ctx, []string{dep2.id}, time.Second)
+	require.NoError(t, err)
 
 	// Act & Assert: WaitForAny should return immediately with the first dependency in the list
 	id, err = ds.WaitForAny(ctx, []string{dep1.id, dep2.id}, 50*time.Millisecond)

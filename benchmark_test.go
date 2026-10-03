@@ -165,7 +165,7 @@ func BenchmarkWaitForDependencies(b *testing.B) {
 			deps[j].state = "Sad"
 			topic.Publish(deps[j])
 		}
-		time.Sleep(1 * time.Millisecond) // Give time for the update to be processed
+		_ = ds.WaitUntilState(ctx, DependenciesNotMet, 100*time.Millisecond) // best-effort reset wait, not timing-critical
 	}
 }
 
@@ -194,9 +194,13 @@ func BenchmarkWaitForAny(b *testing.B) {
 		// Wait for any dependency to be met
 		_, _ = ds.WaitForAny(ctx, ids, 100*time.Millisecond)
 
-		// Reset dependencies to Sad for the next iteration
+		// Reset dependencies to Sad for the next iteration. deps[1] and deps[2]
+		// stay Sad for the whole benchmark, so the overall state never
+		// transitions and there is no event to wait on for this reset
+		// (unlike BenchmarkWaitForDependencies above); a short sleep is the
+		// only option.
 		deps[0].state = "Sad"
 		topic.Publish(deps[0])
-		time.Sleep(1 * time.Millisecond) // Give time for the update to be processed
+		time.Sleep(1 * time.Millisecond)
 	}
 }
