@@ -80,3 +80,58 @@ _Reviewed: 2026-06-18 — See [open findings](./claude-review-architecture.md)_
 - **Resolved in:** 6a1dd59
 - **Description:** The unexported `set(id, state, assess bool)` used a boolean control-flow parameter, obscuring intent at call sites.
 - **Outcome:** Inlined the `d.dependencies.Store(id, state)` calls directly in `Add` and dropped the `assess` parameter from `set`. Complexity delta: `Set` 1→0 (inlined); `Add` 1→1 (unchanged).
+
+---
+
+### 8. `test_helpers.go` compiles into the production binary ✅ Resolved
+
+- **File(s):** `test_helpers.go` → `test_helpers_test.go`
+- **Dimension(s):** Correctness, Maintainability
+- **Priority:** High
+- **Resolved in:** 05a9221
+- **Description:** `test_helpers.go` carried the `package depstate` declaration and was not suffixed `_test.go`, so the Go toolchain compiled `testDep`, `testIDStateFunc`, and `setupTest` into every binary that imports this library.
+- **Outcome:** Renamed the file to `test_helpers_test.go` via `git mv`, preserving history. The commented-out dead code at the end of the file was left for finding 6, tracked separately. Complexity delta: `assertStateEquals` 2→2 (unchanged).
+
+---
+
+### 9. Tests bypass testify in violation of project policy ✅ Resolved
+
+- **File(s):** `dependency_state_test.go`, `dependency_state_features_test.go`, `dependency_state_helpers_test.go`, `dependency_state_race_test.go`, `test_helpers_test.go`
+- **Dimension(s):** Inconsistencies, Maintainability
+- **Priority:** High
+- **Resolved in:** 02608ae
+- **Description:** CLAUDE.md mandates `github.com/stretchr/testify/assert` and `require` for all test assertions. The entire test suite used bare `t.Errorf`, `t.Fatalf`, and manual `if` comparisons instead.
+- **Outcome:** Promoted `testify` to a direct `go.mod` dependency via `go mod tidy` and replaced all ~38 bare assertions with `assert.*`/`require.*` calls across the four test files and `assertStateEquals`. `example_test.go` was left untouched — it contains only `Example*` functions with no bare assertions. Complexity deltas all decreased or stayed flat: `TestChan` 3→1, `TestSet` 2→0, `TestGetDependencyStates` 4→0, `TestWaitForDependencies` 2→0, `TestWaitForDependenciesContextCancellation` 1→0, `TestIsDependencyMet` 7→0, `TestWaitForAny` 9→0, `TestNewDependencyStateWithBuffer` 2→0, `TestNewDependencyStateWithTopic` 2→0, `TestCalculateStateEmpty` 1→0, `TestRaceCondition` 11→9, `TestContextCancellation` 8→6, `TestConcurrentAccess` 8→8 (unchanged), `assertStateEquals` 2→0.
+
+---
+
+### 10. `defer ctx.Done()` in benchmarks is a no-op ✅ Resolved
+
+- **File(s):** `benchmark_test.go`
+- **Dimension(s):** Correctness
+- **Priority:** High
+- **Resolved in:** f945f35
+- **Description:** Every benchmark called `defer ctx.Done()` expecting to cancel a context at cleanup time. `ctx.Done()` returns a channel and does not cancel anything, so `context.Background()` passed to `NewDependencyState` was never cancelled, leaking the `processEvents` and `forwardStateUpdates` goroutines for the life of the test binary.
+- **Outcome:** Replaced `context.Background()` with `b.Context()` in `setupBenchmark`, which `testing.B` cancels automatically when the benchmark function returns — less code than the reviewed `context.WithCancel`/`b.Cleanup` recommendation and consistent with the file's existing use of `b.Context()` in `BenchmarkStateChange`. Removed the now-pointless `defer ctx.Done()` from all 8 benchmarks and dropped the now-unused `ctx` return value from the 6 benchmarks that never passed it to an API call. Complexity deltas unchanged across all affected functions.
+
+---
+
+### 11. No tests call `t.Parallel()` ✅ Resolved
+
+- **File(s):** All `*_test.go` files
+- **Dimension(s):** Maintainability
+- **Priority:** Medium
+- **Resolved in:** 5dac286
+- **Description:** CLAUDE.md states tests safe to run concurrently should call `t.Parallel()`. None of the unit tests did.
+- **Outcome:** Already resolved prior to this review cycle — `5dac286` ("test: run tests in parallel with t.Parallel") added `t.Parallel()` as the first line of all 17 top-level `Test*` functions across `dependency_state_test.go`, `dependency_state_features_test.go`, `dependency_state_helpers_test.go`, and `dependency_state_race_test.go`. The open findings doc was stale on this point; no new commit was needed.
+
+---
+
+### 12. Dead commented-out code in `test_helpers.go` ✅ Resolved
+
+- **File(s):** `test_helpers_test.go:60-96` (originally `test_helpers.go`)
+- **Dimension(s):** Maintainability
+- **Priority:** Low
+- **Resolved in:** bd6ddda
+- **Description:** Three functions (`waitForStateChange`, `publishDependencyState`, `setupDependencies`) were fully commented out with no TODO or explanation.
+- **Outcome:** Deleted the commented blocks; git history preserves them if ever needed again. Complexity delta: N/A (no live code affected).
