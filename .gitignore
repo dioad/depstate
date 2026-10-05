@@ -1,1 +1,9 @@
 .idea/
+
+# APM dependencies
+apm_modules/
+.claude/
+.github/instructions/
+.github/prompts/
+.junie/
+.agents/
