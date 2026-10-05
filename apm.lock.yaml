@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-10-03T20:44:06.963326+00:00'
+generated_at: '2026-10-05T10:13:44.973417+00:00'
 apm_version: 0.18.0
 dependencies:
 - repo_url: dioad/agent-skills
