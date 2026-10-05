@@ -204,7 +204,7 @@ func (d *dependencyState[T]) processDependencyUpdate(t T) {
 }
 
 // forwardStateUpdates forwards state updates from the transitions topic to the result channel.
-func (d *dependencyState[T]) forwardStateUpdates(ctx context.Context, done <-chan struct{}, stateChan <-chan any, resultChan chan<- State) {
+func (d *dependencyState[T]) forwardStateUpdates(ctx context.Context, done <-chan struct{}, stateChan <-chan any, resultChan chan State) {
 	stateChanTyped := pubsub.CastChan[State](stateChan)
 
 	for {
@@ -223,22 +223,46 @@ func (d *dependencyState[T]) forwardStateUpdates(ctx context.Context, done <-cha
 	}
 }
 
-// sendStateUpdate sends a state update to the result channel, using non-blocking send to prevent deadlocks.
-func (d *dependencyState[T]) sendStateUpdate(ctx context.Context, state State, resultChan chan<- State) {
+// sendStateUpdate sends a state update to the result channel. resultChan carries
+// current-state semantics: consumers only care about the latest value, so when
+// the buffer is already full of a stale, superseded state, that stale value is
+// replaced rather than the fresh one being dropped. Dropping the fresh value
+// would otherwise let a later, real transition (e.g. DependenciesMet ->
+// DependenciesNotMet) go unseen whenever the consumer hasn't yet drained an
+// earlier update, since assessState only republishes on an actual state change.
+func (d *dependencyState[T]) sendStateUpdate(ctx context.Context, state State, resultChan chan State) {
 	select {
 	case <-ctx.Done():
 		// Context was cancelled, don't send any more messages
 		return
 	case resultChan <- state:
 		// State update sent successfully
+		return
 	default:
-		// Channel is full, skip this update
+	}
+
+	// Buffer full: discard the stale value, then land the fresh one.
+	select {
+	case <-resultChan:
+	default:
+	}
+
+	select {
+	case resultChan <- state:
+	case <-ctx.Done():
 	}
 }
 
-// publishState publishes a state change to the transitions topic.
+// publishState publishes a state change to the transitions topic. It uses
+// PublishReliable rather than Publish: Topic.Subscribe hands out a buffer-1
+// channel with non-blocking, drop-on-full delivery, and assessState only
+// republishes on an actual state change (no retry), so a dropped publish is
+// permanently lost. Since every subscriber here (forwardStateUpdates, and
+// any Chan/WaitUntilState/WaitForAny caller) does trivial O(1) work per
+// message, the bounded block this introduces is negligible in practice and
+// far preferable to silently losing a transition.
 func (d *dependencyState[T]) publishState(state State) {
-	d.transitions.Publish(state)
+	d.transitions.PublishReliable(state)
 }
 
 // assessState assesses the overall state of the dependencies and publishes a state change if necessary.

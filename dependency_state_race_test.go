@@ -235,3 +235,48 @@ func TestRaceCondition(t *testing.T) {
 
 	assert.NotZero(t, changes, "expected to receive state changes, got none")
 }
+
+// TestSendStateUpdate_FreshTransitionSurvivesUnreadStaleValue reproduces the
+// scenario behind the comment in TestContextCancellation: a stale state sits
+// unread in the buffer-1 result channel (because the consumer reads
+// CurrentState() directly instead of draining the channel), and a real,
+// later transition must still reach the channel rather than being dropped by
+// sendStateUpdate's non-blocking send.
+func TestSendStateUpdate_FreshTransitionSurvivesUnreadStaleValue(t *testing.T) {
+	t.Parallel()
+
+	topic := pubsub.NewTopic()
+	ds, depChan := NewDependencyState(context.Background(), testIDStateFunc, State("Happy"), topic.Subscribe())
+
+	// Seed the dependency as met. This lands DependenciesMet in depChan
+	// (buffer size 1) without anyone draining it.
+	ds.Add(testDep{id: "1", state: "Happy"})
+	require.Eventually(t, func() bool {
+		return ds.CurrentState() == DependenciesMet
+	}, 500*time.Millisecond, time.Millisecond, "expected initial state to become met")
+
+	// Give the forwardStateUpdates goroutine time to land the Met value in
+	// the buffer before the real transition below is published.
+	time.Sleep(50 * time.Millisecond)
+
+	// Drive a real transition: the dependency goes away.
+	ds.Set("1", State("Sad"))
+	require.Eventually(t, func() bool {
+		return ds.CurrentState() == DependenciesNotMet
+	}, 500*time.Millisecond, time.Millisecond, "expected actual state to become not-met")
+
+	// The channel must deliver DependenciesNotMet, not just the stale Met
+	// value that was already buffered.
+	var sawNotMet bool
+	deadline := time.After(500 * time.Millisecond)
+	for !sawNotMet {
+		select {
+		case s := <-depChan:
+			if s == DependenciesNotMet {
+				sawNotMet = true
+			}
+		case <-deadline:
+			require.Fail(t, "depChan never delivered DependenciesNotMet; the fresh transition was dropped behind a stale buffered value")
+		}
+	}
+}
